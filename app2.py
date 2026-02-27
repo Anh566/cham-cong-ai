@@ -8,7 +8,7 @@ st.set_page_config(page_title="Hệ Thống Chấm Công AI", page_icon="🏢", 
 
 # --- CẤU HÌNH CLOUD DATABASE (SUPABASE) ---
 # Thay MATKHAUCUABAN bằng mật khẩu thực tế của bạn
-DATABASE_URL = "postgresql://postgres.bbhfioltprvytizmclxl: Anhngoc@2005@aws-1-ap-southeast-2.pooler.supabase.com:6543/postgres"
+DATABASE_URL = "postgresql://postgres.bbhfioltprvytizmclxl: Anhngoc0205@aws-1-ap-southeast-2.pooler.supabase.com:6543/postgres"
 # --- HÀM KẾT NỐI DATABASE ---
 def get_db_connection():
     return psycopg2.connect(DATABASE_URL)
