@@ -18,15 +18,42 @@ def tinh_thue_tncn(thu_nhap_tinh_thue):
     if thu_nhap_tinh_thue <= 5000000: return thu_nhap_tinh_thue * 0.05
     if thu_nhap_tinh_thue <= 10000000: return thu_nhap_tinh_thue * 0.1 - 250000
     if thu_nhap_tinh_thue <= 18000000: return thu_nhap_tinh_thue * 0.15 - 750000
-    return thu_nhap_tinh_thue * 0.2 - 1650000 # Tạm tính đến bậc 4
+    return thu_nhap_tinh_thue * 0.2 - 1650000
 
-# --- GIAO DIỆN ĐĂNG NHẬP (Giữ nguyên logic cũ) ---
+# --- KIỂM TRA TRẠNG THÁI ĐĂNG NHẬP ---
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 
-# ... (Phần code Login giữ nguyên như phiên trước) ...
+if not st.session_state.logged_in:
+    # GIAO DIỆN ĐĂNG NHẬP
+    st.title("🔐 Đăng nhập hệ thống")
+    with st.form("login_form"):
+        user = st.text_input("Username")
+        pw = st.text_input("Password", type="password")
+        if st.form_submit_button("Đăng nhập"):
+            try:
+                conn = get_connection()
+                cur = conn.cursor()
+                cur.execute("SELECT full_name, role FROM users WHERE username=%s AND password=%s", (user, pw))
+                res = cur.fetchone()
+                if res:
+                    st.session_state.logged_in = True
+                    st.session_state.username = user
+                    st.session_state.full_name = res[0]
+                    st.session_state.role = res[1]
+                    st.rerun()
+                else:
+                    st.error("Sai tài khoản hoặc mật khẩu")
+                conn.close()
+            except Exception as e:
+                st.error(f"Lỗi kết nối Database: {e}")
+else:
+    # GIAO DIỆN SAU KHI ĐĂNG NHẬP
+    st.sidebar.title(f"Chào, {st.session_state.full_name}")
+    if st.sidebar.button("Đăng xuất"):
+        st.session_state.logged_in = False
+        st.rerun()
 
-if st.session_state.logged_in:
     # --- GIAO DIỆN ADMIN ---
     if st.session_state.role == 'admin':
         tab1, tab2, tab3, tab4 = st.tabs(["Cấp tài khoản", "Quản lý nhân viên", "Dữ liệu Chấm công", "Bảng Lương Tổng Hợp"])
@@ -35,47 +62,59 @@ if st.session_state.logged_in:
             st.subheader("Thêm nhân viên và Phụ cấp")
             col_a, col_b = st.columns(2)
             with col_a:
-                new_user = st.text_input("Username")
-                new_pw = st.text_input("Password", type="password")
-                new_name = st.text_input("Họ tên")
+                new_user = st.text_input("Username mới")
+                new_pw = st.text_input("Password mới", type="password")
+                new_name = st.text_input("Họ tên đầy đủ")
             with col_b:
                 new_rate = st.number_input("Lương cơ bản (Tháng)", min_value=0, step=1000000)
-                new_phucap = st.number_input("Phụ cấp (Xăng, ăn trưa...)", min_value=0, step=100000)
+                new_phucap = st.number_input("Phụ cấp (Xăng, ăn...)", min_value=0, step=100000)
             
             if st.button("Tạo tài khoản"):
-                # Ghi vào DB (Lưu ý: Bạn cần ALTER TABLE users để thêm cột phu_cap nếu muốn lưu vĩnh viễn)
-                st.success("Đã tạo nhân viên thành công!")
+                try:
+                    conn = get_connection()
+                    cur = conn.cursor()
+                    cur.execute("INSERT INTO users (username, password, full_name, role, daily_rate, phu_cap) VALUES (%s, %s, %s, %s, %s, %s)",
+                                (new_user, new_pw, new_name, 'employee', new_rate, new_phucap))
+                    conn.commit()
+                    st.success(f"Đã tạo thành công tài khoản cho {new_name}")
+                    conn.close()
+                except:
+                    st.error("Lỗi: Username đã tồn tại hoặc thiếu cột phu_cap trong DB!")
+
+        with tab2:
+            st.subheader("Danh sách nhân sự")
+            conn = get_connection()
+            df_u = pd.read_sql("SELECT username, full_name, daily_rate, phu_cap FROM users WHERE role='employee'", conn)
+            st.dataframe(df_u, use_container_width=True)
+            conn.close()
 
         with tab4:
             st.subheader("Phê duyệt Bảng lương tháng")
             cong_chuan = st.number_input("Công chuẩn tháng này", value=26)
             
             conn = get_connection()
-            # Lấy dữ liệu tổng hợp
             query = """
-                SELECT u.username, u.full_name, u.daily_rate as luong_cb, 
+                SELECT u.username, u.full_name, u.daily_rate as luong_cb, u.phu_cap,
                        COUNT(a.id) as so_cong_thuc_te,
                        SUM(a.earned_money) as luong_theo_cong
                 FROM users u
                 LEFT JOIN attendance a ON u.username = a.username
                 WHERE u.role = 'employee'
-                GROUP BY u.username, u.full_name, u.daily_rate
+                GROUP BY u.username, u.full_name, u.daily_rate, u.phu_cap
             """
             df_luong = pd.read_sql(query, conn)
             
-            # Áp dụng công thức nghiệp vụ
-            df_luong['Lương Gross'] = (df_luong['luong_cb'] * (df_luong['so_cong_thuc_te'] / cong_chuan)).round()
-            df_luong['BH bắt buộc (10.5%)'] = (df_luong['Lương Gross'] * 0.105).round()
-            df_luong['Thu nhập tính thuế'] = df_luong['Lương Gross'] - df_luong['BH bắt buộc (10.5%)'] - 11000000 # Trừ gia cảnh 11tr
+            # Tính toán nghiệp vụ
+            # Lương Gross = (Lương CB * (Số công / Công chuẩn)) + Phụ cấp
+            df_luong['Lương Gross'] = (df_luong['luong_cb'] * (df_luong['so_cong_thuc_te'] / cong_chuan) + df_luong['phu_cap']).round()
+            df_luong['BHXH (10.5%)'] = (df_luong['Lương Gross'] * 0.105).round()
+            df_luong['Thu nhập tính thuế'] = df_luong['Lương Gross'] - df_luong['BHXH (10.5%)'] - 11000000
             df_luong['Thuế TNCN'] = df_luong['Thu nhập tính thuế'].apply(tinh_thue_tncn)
-            df_luong['Lương Thực Nhận (NET)'] = df_luong['Lương Gross'] - df_luong['BH bắt buộc (10.5%)'] - df_luong['Thuế TNCN']
+            df_luong['NET Thực Nhận'] = df_luong['Lương Gross'] - df_luong['BHXH (10.5%)'] - df_luong['Thuế TNCN']
             
-            st.dataframe(df_luong[['full_name', 'so_cong_thuc_te', 'Lương Gross', 'BH bắt buộc (10.5%)', 'Thuế TNCN', 'Lương Thực Nhận (NET)']], use_container_width=True)
-            
-            if st.button("Xuất báo cáo tài chính (Excel)"):
-                st.info("Tính năng đang được phát triển...")
+            st.dataframe(df_luong[['full_name', 'so_cong_thuc_te', 'Lương Gross', 'BHXH (10.5%)', 'Thuế TNCN', 'NET Thực Nhận']], use_container_width=True)
             conn.close()
-            
+
     # --- GIAO DIỆN NHÂN VIÊN ---
     else:
         st.subheader(f"Bảng công của bạn: {st.session_state.full_name}")
@@ -86,7 +125,7 @@ if st.session_state.logged_in:
         if not df_personal.empty:
             st.table(df_personal)
             total = df_personal['Lương ngày'].sum()
-            st.metric("Tổng lương tạm tính", f"{total:,.0f} VNĐ")
+            st.metric("Tổng lương tích lũy", f"{total:,.0f} VNĐ")
         else:
-            st.info("Bạn chưa có dữ liệu chấm công.")
+            st.info("Chưa có dữ liệu chấm công cho tài khoản này.")
         conn.close()
