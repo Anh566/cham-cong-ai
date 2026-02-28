@@ -3,138 +3,110 @@ import psycopg2
 import pandas as pd
 from datetime import datetime
 
-# --- CẤU HÌNH TRANG WEB ---
-st.set_page_config(page_title="Hệ Thống Chấm Công AI", page_icon="🏢", layout="wide")
-
-# --- CẤU HÌNH CLOUD DATABASE (SUPABASE) ---
-# Thay MATKHAUCUABAN bằng mật khẩu thực tế của bạn
+# --- CẤU HÌNH KẾT NỐI SUPABASE ---
+# THAY "MATKHAUCUABAN" THÀNH MẬT KHẨU THỰC TẾ CỦA BẠN
 DATABASE_URL = "postgresql://postgres.bbhfioltprvytizmclxl:Anhngoc0205@aws-1-ap-southeast-2.pooler.supabase.com:6543/postgres"
-# --- HÀM KẾT NỐI DATABASE ---
-def get_db_connection():
+
+def get_connection():
     return psycopg2.connect(DATABASE_URL)
 
-# --- GIAO DIỆN ĐĂNG NHẬP (CỘT BÊN TRÁI) ---
-st.sidebar.title("🔐 Đăng Nhập")
-username_input = st.sidebar.text_input("Tài khoản")
-password_input = st.sidebar.text_input("Mật khẩu", type="password")
-login_btn = st.sidebar.button("Đăng nhập")
+# --- GIAO DIỆN ĐĂNG NHẬP ---
+st.set_page_config(page_title="Hệ thống Chấm công AI", layout="wide")
+st.title("🚀 Hệ Thống Quản Lý Chấm Công Công Ty")
 
-# Xử lý nút Đăng nhập
-if login_btn:
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM users WHERE username=%s AND password=%s", (username_input, password_input))
-    user = cur.fetchone()
-    cur.close()
-    conn.close()
-    
-    if user:
-        st.session_state['user'] = user
-        st.rerun()
-    else:
-        st.sidebar.error("❌ Sai tài khoản hoặc mật khẩu!")
+if 'logged_in' not in st.session_state:
+    st.session_state.logged_in = False
 
-# Thêm nút Đăng xuất
-if 'user' in st.session_state:
-    if st.sidebar.button("Đăng xuất"):
-        del st.session_state['user']
-        st.rerun()
-
-# --- GIAO DIỆN CHÍNH ---
-if 'user' in st.session_state:
-    user_data = st.session_state['user']
-    u_username = user_data[1]  # Vị trí chuẩn trong bảng users là 1
-    u_fullname = user_data[3]  # Vị trí chuẩn là 3
-    u_role = user_data[4]      # Vị trí chuẩn là 4
-    u_daily_rate = user_data[5]# Vị trí chuẩn là 5
-
-    # ================= GIAO DIỆN ADMIN =================
-    if u_role == 'admin':
-        st.title(f"🛠️ Bảng Điều Khiển Admin")
-        st.write(f"Xin chào Quản trị viên: **{u_fullname}**")
-        
-        tab1, tab2 = st.tabs(["👥 Quản lý Nhân viên", "📊 Báo cáo Chấm công"])
-        
-        with tab1:
-            st.subheader("Cấp phát tài khoản nhân viên")
-            with st.form("add_user_form"):
-                new_username = st.text_input("Tên tài khoản (Ví dụ: ngocanh)")
-                new_fullname = st.text_input("Họ và Tên thật")
-                new_password = st.text_input("Mật khẩu")
-                new_rate = st.number_input("Lương 1 ngày (VNĐ)", min_value=0, step=10000)
-                submit_add = st.form_submit_button("Thêm Nhân Viên")
-                
-                if submit_add:
-                    if new_username and new_fullname and new_password:
-                        try:
-                            conn = get_db_connection()
-                            cur = conn.cursor()
-                            cur.execute("INSERT INTO users (username, password, full_name, role, daily_rate) VALUES (%s, %s, %s, %s, %s)",
-                                         (new_username, new_password, new_fullname, 'employee', new_rate))
-                            conn.commit()
-                            cur.close()
-                            conn.close()
-                            st.success(f"✅ Đã thêm nhân viên {new_fullname} thành công!")
-                        except psycopg2.IntegrityError:
-                            st.error("❌ Tên tài khoản này đã tồn tại!")
-                    else:
-                        st.warning("Vui lòng điền đủ thông tin.")
-
-            st.write("---")
-            st.write("**Danh sách tài khoản hiện tại:**")
-            conn = get_db_connection()
+if not st.session_state.logged_in:
+    with st.sidebar:
+        st.subheader("Đăng nhập")
+        user = st.text_input("Tên đăng nhập")
+        pw = st.text_input("Mật khẩu", type="password")
+        if st.button("Đăng nhập"):
+            conn = get_connection()
             cur = conn.cursor()
-            cur.execute("SELECT id, username, full_name, role, daily_rate FROM users")
-            df_users = pd.DataFrame(cur.fetchall(), columns=['id', 'username', 'full_name', 'role', 'daily_rate'])
+            cur.execute("SELECT full_name, role FROM users WHERE username=%s AND password=%s", (user, pw))
+            res = cur.fetchone()
+            if res:
+                st.session_state.logged_in = True
+                st.session_state.username = user
+                st.session_state.full_name = res[0]
+                st.session_state.role = res[1]
+                st.rerun()
+            else:
+                st.error("Sai tài khoản hoặc mật khẩu")
             cur.close()
             conn.close()
-            # Format lương ngày ở bảng Admin
-            st.dataframe(df_users.style.format({"daily_rate": "{:,.0f}"}), use_container_width=True)
+else:
+    st.sidebar.write(f"Chào, **{st.session_state.full_name}** ({st.session_state.role})")
+    if st.sidebar.button("Đăng xuất"):
+        st.session_state.logged_in = False
+        st.rerun()
+
+    # --- GIAO DIỆN ADMIN ---
+    if st.session_state.role == 'admin':
+        tab1, tab2, tab3 = st.tabs(["Cấp tài khoản", "Quản lý nhân viên", "Lịch sử chấm công"])
+
+        with tab1:
+            st.subheader("Thêm nhân viên mới")
+            new_user = st.text_input("Username")
+            new_pw = st.text_input("Password (mặc định)")
+            new_name = st.text_input("Họ tên đầy đủ")
+            new_rate = st.number_input("Lương 1 ngày (VNĐ)", min_value=0, step=10000)
+            
+            if st.button("Tạo tài khoản"):
+                try:
+                    conn = get_connection()
+                    cur = conn.cursor()
+                    cur.execute("INSERT INTO users (username, password, full_name, role, daily_rate) VALUES (%s, %s, %s, %s, %s)",
+                                (new_user, new_pw, new_name, 'employee', new_rate))
+                    conn.commit()
+                    st.success(f"Đã tạo tài khoản cho {new_name}")
+                    cur.close()
+                    conn.close()
+                except:
+                    st.error("Lỗi: Username đã tồn tại!")
 
         with tab2:
-            st.subheader("Lịch sử ra vào của toàn Công ty")
-            conn = get_db_connection()
-            cur = conn.cursor()
-            cur.execute("SELECT * FROM attendance ORDER BY date DESC, check_in DESC")
-            col_names = [desc[0] for desc in cur.description] # Lấy tên cột từ database
-            df_all = pd.DataFrame(cur.fetchall(), columns=col_names)
-            cur.close()
+            st.subheader("Danh sách nhân viên hiện tại")
+            conn = get_connection()
+            df_users = pd.read_sql("SELECT username, full_name, daily_rate FROM users WHERE role='employee'", conn)
             conn.close()
             
-            if not df_all.empty:
-                # Format lương thực nhận ở bảng Admin
-                st.dataframe(df_all.style.format({"earned_money": "{:,.0f}"}), use_container_width=True)
-            else:
-                st.info("Chưa có dữ liệu chấm công nào.")
+            for index, row in df_users.iterrows():
+                col1, col2, col3 = st.columns([3, 2, 1])
+                col1.write(f"**{row['full_name']}** (@{row['username']})")
+                col2.write(f"Lương: {row['daily_rate']:,}đ")
+                if col3.button("Xóa", key=f"del_{row['username']}"):
+                    conn = get_connection()
+                    cur = conn.cursor()
+                    # Xóa lịch sử chấm công trước để tránh lỗi ràng buộc
+                    cur.execute("DELETE FROM attendance WHERE username=%s", (row['username'],))
+                    cur.execute("DELETE FROM users WHERE username=%s", (row['username'],))
+                    conn.commit()
+                    cur.close()
+                    conn.close()
+                    st.warning(f"Đã xóa nhân viên {row['username']}")
+                    st.rerun()
 
-    # ================= GIAO DIỆN NHÂN VIÊN =================
-    elif u_role == 'employee':
-        st.title(f"👋 Chào mừng, {u_fullname}")
-        st.info(f"💰 Mức lương cơ bản của bạn: **{u_daily_rate:,.0f} VNĐ / Ngày**")
+        with tab3:
+            st.subheader("Toàn bộ lịch sử chấm công")
+            conn = get_connection()
+            df_att = pd.read_sql("SELECT * FROM attendance ORDER BY id DESC", conn)
+            st.dataframe(df_att, use_container_width=True)
+            conn.close()
+
+    # --- GIAO DIỆN NHÂN VIÊN ---
+    else:
+        st.subheader(f"Bảng công của bạn: {st.session_state.full_name}")
+        conn = get_connection()
+        query = "SELECT date as 'Ngày', check_in as 'Giờ đến', check_out as 'Giờ về', status as 'Trạng thái', earned_money as 'Lương ngày' FROM attendance WHERE username=%s"
+        df_personal = pd.read_sql(query, conn, params=(st.session_state.username,))
         
-        st.subheader("📅 Bảng công cá nhân của bạn")
-        
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute("SELECT date, check_in, check_out, status, earned_money FROM attendance WHERE username=%s ORDER BY date DESC", (u_username,))
-        df_emp = pd.DataFrame(cur.fetchall(), columns=['Ngày', 'Giờ đến', 'Giờ về', 'Trạng thái', 'Lương ngày'])
-        cur.close()
-        conn.close()
-        
-        if not df_emp.empty:
-            def color_status(val):
-                if val == 'Đúng giờ': return 'color: #28a745; font-weight: bold;'
-                elif val == 'Đi muộn': return 'color: #fd7e14; font-weight: bold;'
-                elif val == 'Thiếu công': return 'color: #dc3545; font-weight: bold;'
-                return ''
-            
-            styled_df = df_emp.style.format({"Lương ngày": "{:,.0f}"}).map(color_status, subset=['Trạng thái'])
-            st.dataframe(styled_df, use_container_width=True)
-            
-            total_salary = df_emp['Lương ngày'].sum()
-            st.success(f"💵 TỔNG LƯƠNG TẠM TÍNH: **{total_salary:,.0f} VNĐ**")
+        if not df_personal.empty:
+            st.table(df_personal)
+            total = df_personal['Lương ngày'].sum()
+            st.metric("Tổng lương tạm tính", f"{total:,.0f} VNĐ")
         else:
-            st.info("Bạn chưa có dữ liệu chấm công nào trên hệ thống.")
-
-else:
-    st.info("👈 Vui lòng nhập tài khoản và mật khẩu ở thanh bên trái.")
+            st.info("Bạn chưa có dữ liệu chấm công.")
+        conn.close()
