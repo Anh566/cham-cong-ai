@@ -140,7 +140,6 @@ else:
         st.subheader(f"Bảng công của bạn: {st.session_state.full_name}")
         conn = get_connection()
         
-        # Sửa lại câu lệnh SQL chuẩn, không dùng dấu nháy đơn để đặt tên cột nữa
         query = "SELECT date, check_in, check_out, status, earned_money FROM attendance WHERE username=%s"
         df_personal = pd.read_sql(query, conn, params=(st.session_state.username,))
         
