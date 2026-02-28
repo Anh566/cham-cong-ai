@@ -82,10 +82,30 @@ else:
                     st.error("Lỗi: Username đã tồn tại hoặc thiếu cột phu_cap trong DB!")
 
         with tab2:
-            st.subheader("Danh sách nhân sự")
+            st.subheader("Danh sách nhân sự và Quản lý")
             conn = get_connection()
+            # Lấy danh sách nhân viên
             df_u = pd.read_sql("SELECT username, full_name, daily_rate, phu_cap FROM users WHERE role='employee'", conn)
-            st.dataframe(df_u, use_container_width=True)
+            
+            for index, row in df_u.iterrows():
+                col1, col2, col3, col4 = st.columns([2, 3, 2, 1])
+                col1.write(f"**@{row['username']}**")
+                col2.write(f"{row['full_name']}")
+                col3.write(f"{row['daily_rate']:,}đ")
+                
+                # Nút xóa tài khoản
+                if col4.button("Xóa", key=f"del_{row['username']}"):
+                    try:
+                        cur = conn.cursor()
+                        # 1. Xóa dữ liệu chấm công trước (để tránh lỗi khóa ngoại)
+                        cur.execute("DELETE FROM attendance WHERE username=%s", (row['username'],))
+                        # 2. Xóa tài khoản
+                        cur.execute("DELETE FROM users WHERE username=%s", (row['username'],))
+                        conn.commit()
+                        st.warning(f"Đã xóa tài khoản {row['username']}")
+                        st.rerun() # Tải lại trang để cập nhật danh sách
+                    except Exception as e:
+                        st.error(f"Lỗi khi xóa: {e}")
             conn.close()
 
         with tab4:
