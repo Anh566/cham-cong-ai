@@ -139,13 +139,24 @@ else:
     else:
         st.subheader(f"Bảng công của bạn: {st.session_state.full_name}")
         conn = get_connection()
-        query = "SELECT date as 'Ngày', check_in as 'Giờ đến', check_out as 'Giờ về', status as 'Trạng thái', earned_money as 'Lương ngày' FROM attendance WHERE username=%s"
+        
+        # Sửa lại câu lệnh SQL chuẩn, không dùng dấu nháy đơn để đặt tên cột nữa
+        query = "SELECT date, check_in, check_out, status, earned_money FROM attendance WHERE username=%s"
         df_personal = pd.read_sql(query, conn, params=(st.session_state.username,))
         
         if not df_personal.empty:
+            # Dùng Pandas đổi tên cột hiển thị cho an toàn tuyệt đối
+            df_personal = df_personal.rename(columns={
+                'date': 'Ngày',
+                'check_in': 'Giờ đến',
+                'check_out': 'Giờ về',
+                'status': 'Trạng thái',
+                'earned_money': 'Lương ngày'
+            })
+            
             st.table(df_personal)
             total = df_personal['Lương ngày'].sum()
-            st.metric("Tổng lương tích lũy", f"{total:,.0f} VNĐ")
+            st.metric("Tổng thu nhập tạm tính", f"{total:,.0f} VNĐ")
         else:
             st.info("Chưa có dữ liệu chấm công cho tài khoản này.")
         conn.close()
