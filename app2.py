@@ -155,7 +155,7 @@ else:
             
             st.table(df_personal)
             total = df_personal['Lương ngày'].sum()
-            st.metric("Tổng thu nhập tạm tính", f"{total:,.-1f} VNĐ")
+            st.metric("Tổng thu nhập tạm tính", f"{total:,.0f} VNĐ")
         else:
             st.info("Chưa có dữ liệu chấm công cho tài khoản này.")
         conn.close()
