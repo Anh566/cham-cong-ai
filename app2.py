@@ -144,7 +144,6 @@ else:
         df_personal = pd.read_sql(query, conn, params=(st.session_state.username,))
         
         if not df_personal.empty:
-            # Dùng Pandas đổi tên cột hiển thị cho an toàn tuyệt đối
             df_personal = df_personal.rename(columns={
                 'date': 'Ngày',
                 'check_in': 'Giờ đến',
@@ -153,9 +152,11 @@ else:
                 'earned_money': 'Lương ngày'
             })
             
-            st.table(df_personal)
+            # ĐÃ SỬA: Ép định dạng cột Lương ngày bỏ số thập phân và thêm dấu phẩy
+            st.table(df_personal.style.format({"Lương ngày": "{:,.0f}"}))
+            
             total = df_personal['Lương ngày'].sum()
-            st.metric("Tổng thu nhập tạm tính", f"{total:,,0f} VNĐ")
+            st.metric("Tổng thu nhập tạm tính", f"{total:,.0f} VNĐ")
         else:
             st.info("Chưa có dữ liệu chấm công cho tài khoản này.")
         conn.close()
