@@ -107,6 +107,45 @@ else:
                     except Exception as e:
                         st.error(f"Lỗi khi xóa: {e}")
             conn.close()
+            
+        with tab3:
+            st.subheader("Lịch sử chấm công toàn công ty")
+            conn = get_connection()
+            
+            # Lấy dữ liệu chấm công của tất cả mọi người, ghép với tên thật từ bảng users
+            query_tab3 = """
+                SELECT a.date as "Ngày", 
+                       u.full_name as "Họ tên", 
+                       a.check_in as "Giờ đến", 
+                       a.check_out as "Giờ về", 
+                       a.status as "Trạng thái", 
+                       a.earned_money as "Tiền công ngày"
+                FROM attendance a
+                LEFT JOIN users u ON a.username = u.username
+                ORDER BY a.date DESC, a.check_in DESC
+            """
+            df_attendance_all = pd.read_sql(query_tab3, conn)
+            
+            if not df_attendance_all.empty:
+                # Ép định dạng tiền tệ cho cột Tiền công ngày để dễ nhìn
+                st.dataframe(
+                    df_attendance_all.style.format({"Tiền công ngày": "{:,.0f}"}),
+                    use_container_width=True,
+                    height=400 # Giới hạn chiều cao bảng để cuộn cho đẹp
+                )
+                
+                # Nút tải dữ liệu thô (tùy chọn thêm cho Admin)
+                csv = df_attendance_all.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="📥 Tải nhật ký chấm công (CSV)",
+                    data=csv,
+                    file_name=f"nhat_ky_cham_cong_{datetime.now().strftime('%Y%m%d')}.csv",
+                    mime='text/csv',
+                )
+            else:
+                st.info("Chưa có dữ liệu chấm công nào trong hệ thống.")
+                
+            conn.close()    
 
         with tab4:
             st.subheader("Phê duyệt Bảng lương tháng")
