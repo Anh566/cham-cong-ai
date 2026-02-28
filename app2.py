@@ -132,7 +132,16 @@ else:
             df_luong['Thuế TNCN'] = df_luong['Thu nhập tính thuế'].apply(tinh_thue_tncn)
             df_luong['NET Thực Nhận'] = df_luong['Lương Gross'] - df_luong['BHXH (10.5%)'] - df_luong['Thuế TNCN']
             
-            st.dataframe(df_luong[['full_name', 'so_cong_thuc_te', 'Lương Gross', 'BHXH (10.5%)', 'Thuế TNCN', 'NET Thực Nhận']], use_container_width=True)
+            st.dataframe(
+                df_luong[['full_name', 'so_cong_thuc_te', 'Lương Gross', 'BHXH (10.5%)', 'Thuế TNCN', 'NET Thực Nhận']]
+                .style.format({
+                    "Lương Gross": "{:,.0f}",
+                    "BHXH (10.5%)": "{:,.0f}",
+                    "Thuế TNCN": "{:,.0f}",
+                    "NET Thực Nhận": "{:,.0f}"
+                }),
+                use_container_width=True
+            )
             conn.close()
 
     # --- GIAO DIỆN NHÂN VIÊN ---
