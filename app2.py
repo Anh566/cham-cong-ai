@@ -84,26 +84,30 @@ else:
         with tab2:
             st.subheader("Danh sách nhân sự và Quản lý")
             conn = get_connection()
-            # Lấy danh sách nhân viên
-            df_u = pd.read_sql("SELECT username, full_name, daily_rate, phu_cap FROM users WHERE role='employee'", conn)
+            # Lấy thêm trường password từ Database
+            df_u = pd.read_sql("SELECT username, password, full_name, daily_rate, phu_cap FROM users WHERE role='employee'", conn)
             
             for index, row in df_u.iterrows():
-                col1, col2, col3, col4 = st.columns([2, 3, 2, 1])
+                # Chia làm 5 cột thay vì 4, dành không gian cho mật khẩu
+                col1, col2, col3, col4, col5 = st.columns([2, 2, 3, 2, 1])
+                
                 col1.write(f"**@{row['username']}**")
-                col2.write(f"{row['full_name']}")
-                col3.write(f"{row['daily_rate']:,}đ")
+                # Dùng st.code để in mật khẩu ra, admin click vào là copy được luôn
+                col2.code(row['password']) 
+                col3.write(f"{row['full_name']}")
+                col4.write(f"{row['daily_rate']:,}đ")
                 
                 # Nút xóa tài khoản
-                if col4.button("Xóa", key=f"del_{row['username']}"):
+                if col5.button("Xóa", key=f"del_{row['username']}"):
                     try:
                         cur = conn.cursor()
-                        # 1. Xóa dữ liệu chấm công trước (để tránh lỗi khóa ngoại)
+                        # 1. Xóa dữ liệu chấm công trước
                         cur.execute("DELETE FROM attendance WHERE username=%s", (row['username'],))
                         # 2. Xóa tài khoản
                         cur.execute("DELETE FROM users WHERE username=%s", (row['username'],))
                         conn.commit()
                         st.warning(f"Đã xóa tài khoản {row['username']}")
-                        st.rerun() # Tải lại trang để cập nhật danh sách
+                        st.rerun() 
                     except Exception as e:
                         st.error(f"Lỗi khi xóa: {e}")
             conn.close()
