@@ -188,27 +188,67 @@ else:
             conn.close()
 
     # --- GIAO DIỆN NHÂN VIÊN ---
-    else:
-        st.subheader(f"Bảng công của bạn: {st.session_state.full_name}")
-        conn = get_connection()
+   # --- GIAO DIỆN NHÂN VIÊN ---
+    elif st.session_state.role == 'employee':
+        import os # Thêm thư viện os để load ảnh (nếu trên cùng file chưa import)
         
-        query = "SELECT date, check_in, check_out, status, earned_money FROM attendance WHERE username=%s"
-        df_personal = pd.read_sql(query, conn, params=(st.session_state.username,))
+        # Chia làm 2 Tab cho gọn gàng
+        tab_info, tab_cong = st.tabs(["👤 Thông tin cá nhân", "📅 Bảng chấm công"])
         
-        if not df_personal.empty:
-            df_personal = df_personal.rename(columns={
-                'date': 'Ngày',
-                'check_in': 'Giờ đến',
-                'check_out': 'Giờ về',
-                'status': 'Trạng thái',
-                'earned_money': 'Lương ngày'
-            })
+        # TAB 1: THÔNG TIN CÁ NHÂN
+        with tab_info:
+            st.subheader("Hồ sơ Nhân viên")
             
-            # ĐÃ SỬA: Ép định dạng cột Lương ngày bỏ số thập phân và thêm dấu phẩy
-            st.table(df_personal.style.format({"Lương ngày": "{:,.0f}"}))
+            # Kéo thông tin chi tiết từ DB
+            conn = get_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT username, full_name, daily_rate, phu_cap FROM users WHERE username=%s", (st.session_state.username,))
+            user_info = cur.fetchone()
+            conn.close()
             
-            total = df_personal['Lương ngày'].sum()
-            st.metric("Tổng thu nhập tạm tính", f"{total:,.0f} VNĐ")
-        else:
-            st.info("Chưa có dữ liệu chấm công cho tài khoản này.")
-        conn.close()
+            if user_info:
+                # Chia 2 cột: Cột 1 để ảnh, Cột 2 để text
+                col_img, col_text = st.columns([1, 2])
+                
+                with col_img:
+                    # Trích xuất ảnh từ thư mục raw_image của hệ thống nhận diện
+                    img_path = f"raw_image/{st.session_state.username}/{st.session_state.username}_0.jpg"
+                    if os.path.exists(img_path):
+                        st.image(img_path, width=200, caption="Ảnh đại diện (AI Camera)")
+                    else:
+                        # Nếu chưa có ảnh nhận diện, dùng avatar mặc định
+                        st.image("https://cdn-icons-png.flaticon.com/512/3135/3135715.png", width=200, caption="Ảnh mặc định")
+                
+                with col_text:
+                    st.markdown(f"**Họ và tên:** {user_info[1]}")
+                    st.markdown(f"**Mã nhân viên:** {user_info[0]}")
+                    st.markdown(f"**Chức vụ:** Nhân viên")
+                    # Lưu ý: Vì DB hiện tại chưa có cột phòng ban, mình đang để mặc định. 
+                    st.markdown(f"**Phòng ban:** Khối Vận hành") 
+                    st.markdown(f"**Mức lương cơ bản:** {user_info[2]:,.0f} VNĐ/Tháng")
+                    st.markdown(f"**Phụ cấp cố định:** {user_info[3]:,.0f} VNĐ/Tháng")
+
+        # TAB 2: BẢNG CHẤM CÔNG (Giữ nguyên logic cũ của bạn)
+        with tab_cong:
+            st.subheader(f"Bảng công của bạn tháng này")
+            conn = get_connection()
+            
+            query = "SELECT date, check_in, check_out, status, earned_money FROM attendance WHERE username=%s"
+            df_personal = pd.read_sql(query, conn, params=(st.session_state.username,))
+            
+            if not df_personal.empty:
+                df_personal = df_personal.rename(columns={
+                    'date': 'Ngày',
+                    'check_in': 'Giờ đến',
+                    'check_out': 'Giờ về',
+                    'status': 'Trạng thái',
+                    'earned_money': 'Lương ngày'
+                })
+                
+                st.table(df_personal.style.format({"Lương ngày": "{:,.0f}"}))
+                
+                total = df_personal['Lương ngày'].sum()
+                st.metric("Tổng thu nhập tạm tính", f"{total:,.0f} VNĐ")
+            else:
+                st.info("Chưa có dữ liệu chấm công cho tài khoản này.")
+            conn.close()
