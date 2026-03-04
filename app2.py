@@ -62,54 +62,112 @@ else:
             st.subheader("Thêm nhân viên và Phụ cấp")
             col_a, col_b = st.columns(2)
             with col_a:
-                new_user = st.text_input("Username mới")
-                new_pw = st.text_input("Password mới", type="password")
-                new_name = st.text_input("Họ tên đầy đủ")
+                new_user = st.text_input("Mã nhân viên (Username) *")
+                new_pw = st.text_input("Mật khẩu mới *", type="password")
+                new_name = st.text_input("Họ tên đầy đủ *")
+                danh_sach_phong = ["IT - Kỹ thuật", "Hành chính - Nhân sự", "Kế toán", "Marketing", "Vận hành", "Khác"]
+                new_phongban = st.selectbox("Phòng ban", danh_sach_phong)
+                
             with col_b:
                 new_rate = st.number_input("Lương cơ bản (Tháng)", min_value=0, step=1000000)
                 new_phucap = st.number_input("Phụ cấp (Xăng, ăn...)", min_value=0, step=100000)
             
             if st.button("Tạo tài khoản"):
-                try:
-                    conn = get_connection()
-                    cur = conn.cursor()
-                    cur.execute("INSERT INTO users (username, password, full_name, role, daily_rate, phu_cap) VALUES (%s, %s, %s, %s, %s, %s)",
-                                (new_user, new_pw, new_name, 'employee', new_rate, new_phucap))
-                    conn.commit()
-                    st.success(f"Đã tạo thành công tài khoản cho {new_name}")
-                    conn.close()
-                except:
-                    st.error("Lỗi: Username đã tồn tại hoặc thiếu cột phu_cap trong DB!")
+                # 1. Kiểm tra xem Admin có nhập thiếu trường bắt buộc không
+                if not new_user or not new_pw or not new_name:
+                    st.warning("⚠️ Vui lòng điền đầy đủ Mã nhân viên, Mật khẩu và Họ tên!")
+                else:
+                    try:
+                        conn = get_connection()
+                        cur = conn.cursor()
+                        
+                        # 2. KIỂM TRA TRÙNG LẶP MÃ NHÂN VIÊN
+                        cur.execute("SELECT username FROM users WHERE username = %s", (new_user,))
+                        existing_user = cur.fetchone()
+                        
+                        if existing_user:
+                            # Nếu tìm thấy người đã dùng mã này -> Báo lỗi và dừng lại
+                            st.error(f"❌ LỖI: Mã nhân viên '{new_user}' đã tồn tại trong hệ thống! Vui lòng nhập một mã khác.")
+                        else:
+                            # 3. Nếu mã hợp lệ (chưa ai dùng) -> Tiến hành lưu vào Database
+                            cur.execute("INSERT INTO users (username, password, full_name, role, daily_rate, phu_cap, phong_ban) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                                        (new_user, new_pw, new_name, 'employee', new_rate, new_phucap, new_phongban))
+                            conn.commit()
+                            st.success(f"✅ Đã tạo thành công tài khoản cho {new_name} - Phòng {new_phongban}")
+                            
+                        conn.close()
+                    except Exception as e:
+                        st.error(f"Lỗi hệ thống: {e}")
 
         with tab2:
             st.subheader("Danh sách nhân sự và Quản lý")
             conn = get_connection()
-            # Lấy thêm trường password từ Database
-            df_u = pd.read_sql("SELECT username, password, full_name, daily_rate, phu_cap FROM users WHERE role='employee'", conn)
+            # Lấy toàn bộ thông tin cần thiết
+            df_u = pd.read_sql("SELECT username, password, full_name, phong_ban, daily_rate, phu_cap FROM users WHERE role='employee'", conn)
             
             for index, row in df_u.iterrows():
-                # Chia làm 5 cột thay vì 4, dành không gian cho mật khẩu
-                col1, col2, col3, col4, col5 = st.columns([2, 2, 3, 2, 1])
+                # Dành không gian cho nút Sửa và Xóa
+                col1, col2, col3, col4, col5 = st.columns([2, 2, 3, 2, 2])
                 
                 col1.write(f"**@{row['username']}**")
-                # Dùng st.code để in mật khẩu ra, admin click vào là copy được luôn
                 col2.code(row['password']) 
-                col3.write(f"{row['full_name']}")
+                col3.write(f"{row['full_name']} ({row['phong_ban']})")
                 col4.write(f"{row['daily_rate']:,}đ")
                 
-                # Nút xóa tài khoản
-                if col5.button("Xóa", key=f"del_{row['username']}"):
-                    try:
-                        cur = conn.cursor()
-                        # 1. Xóa dữ liệu chấm công trước
-                        cur.execute("DELETE FROM attendance WHERE username=%s", (row['username'],))
-                        # 2. Xóa tài khoản
-                        cur.execute("DELETE FROM users WHERE username=%s", (row['username'],))
-                        conn.commit()
-                        st.warning(f"Đã xóa tài khoản {row['username']}")
-                        st.rerun() 
-                    except Exception as e:
-                        st.error(f"Lỗi khi xóa: {e}")
+                # Gom 2 nút Sửa và Xóa vào cùng 1 cột cho gọn
+                with col5:
+                    btn_edit, btn_del = st.columns(2)
+                    
+                    # 1. TÍNH NĂNG XÓA
+                    if btn_del.button("Xóa", key=f"del_{row['username']}"):
+                        try:
+                            cur = conn.cursor()
+                            cur.execute("DELETE FROM attendance WHERE username=%s", (row['username'],))
+                            cur.execute("DELETE FROM users WHERE username=%s", (row['username'],))
+                            conn.commit()
+                            st.warning(f"Đã xóa tài khoản {row['username']}")
+                            st.rerun() 
+                        except Exception as e:
+                            st.error(f"Lỗi khi xóa: {e}")
+
+                    # 2. TÍNH NĂNG SỬA TÀI KHOẢN (Hiển thị form)
+                    edit_toggle = btn_edit.toggle("Sửa", key=f"tg_{row['username']}")
+
+                # Nếu Admin bật nút Sửa, hiện ra Form cập nhật ngay bên dưới dòng đó
+                if edit_toggle:
+                    with st.container(border=True):
+                        st.markdown(f"**Cập nhật thông tin cho:** `{row['username']}`")
+                        with st.form(key=f"form_edit_{row['username']}"):
+                            c1, c2, c3 = st.columns(3)
+                            
+                            with c1:
+                                # Ô username bị khóa (disabled=True)
+                                st.text_input("Mã nhân viên (Không thể sửa)", value=row['username'], disabled=True)
+                                edit_pw = st.text_input("Mật khẩu mới", value=row['password'])
+                            with c2:
+                                edit_name = st.text_input("Họ tên", value=row['full_name'])
+                                danh_sach_phong = ["IT - Kỹ thuật", "Hành chính - Nhân sự", "Kế toán", "Marketing", "Vận hành", "Khác"]
+                                # Chọn lại phòng ban, lấy index cũ nếu có
+                                idx_phong = danh_sach_phong.index(row['phong_ban']) if row['phong_ban'] in danh_sach_phong else 5
+                                edit_phong = st.selectbox("Phòng ban", danh_sach_phong, index=idx_phong, key=f"phong_{row['username']}")
+                            with c3:
+                                edit_rate = st.number_input("Lương cơ bản", value=int(row['daily_rate']), step=500000)
+                                edit_phucap = st.number_input("Phụ cấp", value=int(row['phu_cap']), step=100000)
+                            
+                            submit_edit = st.form_submit_button("💾 Lưu thay đổi")
+                            if submit_edit:
+                                try:
+                                    cur = conn.cursor()
+                                    cur.execute("""
+                                        UPDATE users 
+                                        SET password=%s, full_name=%s, phong_ban=%s, daily_rate=%s, phu_cap=%s 
+                                        WHERE username=%s
+                                    """, (edit_pw, edit_name, edit_phong, edit_rate, edit_phucap, row['username']))
+                                    conn.commit()
+                                    st.success("Đã cập nhật thành công! Đang tải lại...")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Lỗi cập nhật: {e}")
             conn.close()
             
         with tab3:
