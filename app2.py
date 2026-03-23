@@ -64,30 +64,31 @@ else:
             with st.form("create_user_form", clear_on_submit=True):
                 col_a, col_b = st.columns(2)
                 with col_a:
-                    new_user = st.text_input("Mã nhân viên (Username) *")
-                    new_pw = st.text_input("Mật khẩu mới *", type="password")
+                    new_user = st.text_input("Mã nhân viên (Dùng để đăng nhập) *") # Ví dụ: NV001
+                    new_pw = st.text_input("Mật khẩu *", type="password")
                     new_name = st.text_input("Họ tên đầy đủ *")
-                    danh_sach_phong = ["IT - Kỹ thuật", "Hành chính - Nhân sự", "Kế toán", "Marketing", "Vận hành", "Khác"]
-                    new_phongban = st.selectbox("Phòng ban", danh_sach_phong)
+                    # DÒNG MỚI: Nhập tên thư mục trong raw_image
+                    new_face_id = st.text_input("Tên thư mục ảnh (trong raw_image) *", placeholder="Ví dụ: anhngoc")
+                    
                 with col_b:
-                    new_rate = st.number_input("Lương cơ bản (Tháng)", min_value=0, step=1000000)
-                    new_phucap = st.number_input("Phụ cấp (Xăng, ăn...)", min_value=0, step=100000)
+                    new_phongban = st.selectbox("Phòng ban", ["IT", "Nhân sự", "Kế toán", "Marketing", "Vận hành", "Khác"])
+                    new_rate = st.number_input("Lương cơ bản", min_value=0, step=1000000)
+                    new_phucap = st.number_input("Phụ cấp", min_value=0, step=100000)
                 
                 if st.form_submit_button("Tạo tài khoản"):
-                    if not new_user or not new_pw or not new_name:
-                        st.warning("⚠️ Vui lòng điền đầy đủ thông tin bắt buộc!")
+                    if not new_user or not new_face_id:
+                        st.warning("⚠️ Vui lòng nhập Mã nhân viên và Tên thư mục ảnh!")
                     else:
                         try:
                             conn = get_connection()
                             cur = conn.cursor()
-                            cur.execute("SELECT username FROM users WHERE username = %s", (new_user,))
-                            if cur.fetchone():
-                                st.error(f"❌ Mã nhân viên '{new_user}' đã tồn tại!")
-                            else:
-                                cur.execute("INSERT INTO users (username, password, full_name, role, daily_rate, phu_cap, phong_ban) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                                            (new_user, new_pw, new_name, 'employee', new_rate, new_phucap, new_phongban))
-                                conn.commit()
-                                st.success(f"✅ Đã tạo thành công tài khoản cho {new_name}")
+                            # Lưu thêm cột face_id
+                            cur.execute("""
+                                INSERT INTO users (username, password, full_name, role, daily_rate, phu_cap, phong_ban, face_id) 
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                            """, (new_user, new_pw, new_name, 'employee', new_rate, new_phucap, new_phongban, new_face_id))
+                            conn.commit()
+                            st.success(f"✅ Đã tạo tài khoản {new_user} liên kết với ảnh {new_face_id}")
                             conn.close()
                         except Exception as e:
                             st.error(f"Lỗi: {e}")
