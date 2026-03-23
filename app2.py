@@ -225,70 +225,69 @@ else:
             
             conn.close()
 
-    # --- GIAO DIỆN NHÂN VIÊN ---
+   # --- GIAO DIỆN NHÂN VIÊN ---
     elif st.session_state.role == 'employee':
         tab_info, tab_cong = st.tabs(["👤 Thông tin cá nhân", "📅 Bảng chấm công"])
         
+        # Lấy thông tin cơ bản và face_id
+        conn = get_connection()
+        cur = conn.cursor()
+        # BỔ SUNG: Lấy thêm face_id (cột thứ 6)
+        cur.execute("SELECT username, full_name, daily_rate, phu_cap, phong_ban, face_id FROM users WHERE username=%s", (st.session_state.username,))
+        user_info = cur.fetchone()
+        conn.close()
+
         with tab_info:
             st.subheader("Hồ sơ Nhân viên")
-            conn = get_connection()
-            cur = conn.cursor()
-            # SỬA LỖI: Lấy thêm cột phong_ban từ Database
-            cur.execute("SELECT username, full_name, daily_rate, phu_cap, phong_ban FROM users WHERE username=%s", (st.session_state.username,))
-            user_info = cur.fetchone()
-            conn.close()
-            
             if user_info:
                 col_img, col_text = st.columns([1, 2])
                 with col_img:
-                    img_path = f"raw_image/{st.session_state.username}/{st.session_state.username}_0.jpg"
+                    # SỬA LỖI: Dùng face_id (user_info[5]) để load ảnh thay vì username
+                    f_id = user_info[5] if user_info[5] else "unknown"
+                    img_path = f"raw_image/{f_id}/{f_id}_0.jpg"
+                    
                     if os.path.exists(img_path):
-                        st.image(img_path, width=200)
+                        st.image(img_path, width=200, caption="Ảnh nhận diện AI")
                     else:
-                        st.image("https://cdn-icons-png.flaticon.com/512/3135/3135715.png", width=200)
+                        st.image("https://cdn-icons-png.flaticon.com/512/3135/3135715.png", width=200, caption="Chưa có ảnh hồ sơ")
                 
                 with col_text:
                     st.markdown(f"**Họ và tên:** {user_info[1]}")
-                    st.markdown(f"**Mã nhân viên:** {user_info[0]}")
-                    st.markdown(f"**Chức vụ:** Nhân viên")
-                    # SỬA LỖI: Hiển thị phòng ban động từ DB
+                    st.markdown(f"**Mã nhân viên:** {user_info[0]}") # Đây là mã ví dụ NV001
+                    st.markdown(f"**AI ID (Thư mục ảnh):** `{user_info[5]}`") # Để nhân viên biết mình khớp với folder nào
                     st.markdown(f"**Phòng ban:** {user_info[4] if user_info[4] else 'Chưa cập nhật'}") 
                     st.markdown(f"**Mức lương cơ bản:** {user_info[2]:,.0f} VNĐ/Tháng")
                     st.markdown(f"**Phụ cấp cố định:** {user_info[3]:,.0f} VNĐ/Tháng")
 
-        # --- GIAO DIỆN NHÂN VIÊN ---
         with tab_cong:
             st.subheader(f"Bảng công của bạn tháng này")
             conn = get_connection()
-            
-            # 1. SỬA QUERY: Thêm ORDER BY date DESC để ngày mới nhất hiện lên đầu bảng
+            # Sắp xếp ngày mới nhất lên đầu
             query = "SELECT date, check_in, check_out, status, earned_money FROM attendance WHERE username=%s ORDER BY date DESC"
             df_personal = pd.read_sql(query, conn, params=(st.session_state.username,))
             
             if not df_personal.empty:
-                # 2. XỬ LÝ LẶP CHỮ: Loại bỏ các trạng thái trùng lặp (ví dụ: Về sớm & Về sớm -> Về sớm)
-                df_personal['status'] = df_personal['status'].apply(
-                    lambda x: " & ".join(list(dict.fromkeys(x.split(" & ")))) if x else x
-                )
+                # Xử lý lặp chữ "Về sớm" hoặc "Đi muộn"
+                def clean_status(x):
+                    if not x: return ""
+                    # Tách chuỗi bằng " & ", lọc trùng bằng dict.fromkeys, rồi nối lại
+                    return " & ".join(list(dict.fromkeys(str(x).split(" & "))))
 
-                # 3. LÀM ĐẸP GIAO DIỆN: Đổi tên cột và xử lý giá trị None
+                df_personal['status'] = df_personal['status'].apply(clean_status)
+
+                # Làm đẹp tên cột
                 df_personal = df_personal.rename(columns={
-                    'date': 'Ngày',
-                    'check_in': 'Giờ đến',
-                    'check_out': 'Giờ về',
-                    'status': 'Trạng thái',
-                    'earned_money': 'Lương ngày'
+                    'date': 'Ngày', 'check_in': 'Giờ đến', 'check_out': 'Giờ về',
+                    'status': 'Trạng thái', 'earned_money': 'Lương ngày'
                 })
                 
-                # Thay thế các giá trị None (nếu nhân viên chưa check-out) thành dấu gạch ngang cho đẹp
+                # Xử lý các giá trị trống
                 df_personal['Giờ về'] = df_personal['Giờ về'].fillna('--:--:--')
 
-                # Hiển thị bảng
                 st.table(df_personal.style.format({"Lương ngày": "{:,.0f}"}))
                 
-                # Tính tổng thu nhập
                 total = df_personal['Lương ngày'].sum()
-                st.metric("Tổng thu nhập tạm tính", f"{total:,.0f} VNĐ")
+                st.metric("Tổng thu nhập thực tế tháng này (Tạm tính)", f"{total:,.0f} VNĐ")
             else:
-                st.info("Chưa có dữ liệu chấm công cho tài khoản này.")
+                st.info("Hệ thống chưa ghi nhận dữ liệu chấm công nào của bạn.")
             conn.close()
