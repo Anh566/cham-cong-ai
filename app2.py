@@ -224,7 +224,7 @@ else:
                 tong_quy = df_luong['NET Thực Nhận'].sum()
                 st.success(f"✅ Tổng quỹ lương cần chi trả: **{tong_quy:,.0f} VNĐ**")
 
-                # --- PHẦN XUẤT FILE EXCEL ĐÃ NÂNG CẤP ---
+                # --- PHẦN XUẤT FILE EXCEL ĐÃ SỬA LỖI TÊN BIẾN ---
                 st.divider()
                 st.subheader("📥 Xuất báo cáo Excel cho Sếp")
                 
@@ -237,36 +237,34 @@ else:
 
                 buffer = io.BytesIO()
                 with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-                    # Ghi dữ liệu từ dòng thứ 3 (để dành 2 dòng đầu làm tiêu đề)
+                    # Ghi dữ liệu từ dòng thứ 4 (index 3)
                     df_excel.to_excel(writer, index=False, sheet_name='Bang_Luong', startrow=3)
                     
                     workbook  = writer.book
                     worksheet = writer.sheets['Bang_Luong']
 
-                    # 2. Định dạng (Format)
+                    # 2. Định dạng (Format) - Đã chuẩn hóa tên biến
                     title_fmt = workbook.add_format({'bold': True, 'font_size': 16, 'align': 'center', 'valign': 'vcenter'})
                     info_fmt = workbook.add_format({'italic': True, 'font_size': 10})
-                    header_fmt = workbook.add_format({'bold': True, 'bg_color': '#D7E4BC', 'border': 1, 'align': 'center'})
-                    money_fmt = workbook.add_format({'num_format': '#,##0', 'border': 1}) # Định dạng có dấu phẩy ,
+                    h_fmt = workbook.add_format({'bold': True, 'bg_color': '#D7E4BC', 'border': 1, 'align': 'center'})
+                    money_fmt = workbook.add_format({'num_format': '#,##0', 'border': 1})
                     border_fmt = workbook.add_format({'border': 1})
 
-                    # 3. Viết tiêu đề tháng (Dòng 0)
+                    # 3. Viết tiêu đề tháng
                     thang_hien_tai = datetime.now().strftime('%m/%Y')
                     worksheet.merge_range('A1:F1', f'BẢNG LƯƠNG NHÂN VIÊN - THÁNG {thang_hien_tai}', title_fmt)
                     
-                    # 4. Viết ngày xuất báo cáo (Dòng 1)
+                    # 4. Viết ngày xuất báo cáo
                     ngay_xuat = datetime.now().strftime('%d/%m/%Y %H:%M')
                     worksheet.write('A2', f'Ngày xuất báo cáo: {ngay_xuat}', info_fmt)
 
-                    # 5. Áp dụng định dạng cho Header và Cột tiền
+                    # 5. Áp dụng định dạng cho Header (Dòng 4 - Index 3)
                     for col_num, value in enumerate(df_excel.columns.values):
-                        worksheet.write(3, col_num, value, header_format)
-                        worksheet.set_column(col_num, col_num, 18)
-
-                    # Áp dụng định dạng số cho các cột tiền (Cột C đến F)
-                    num_rows = len(df_excel)
-                    worksheet.set_column('C:F', 18, money_fmt)
-                    worksheet.set_column('A:B', 18, border_fmt)
+                        worksheet.write(3, col_num, value, h_fmt) # Đã dùng h_fmt thống nhất
+                    
+                    # 6. Chỉnh độ rộng cột và định dạng số cho các cột tiền
+                    worksheet.set_column('A:B', 20, border_fmt) # Cột tên và ngày làm
+                    worksheet.set_column('C:F', 18, money_fmt) # Các cột tiền từ C đến F
 
                 st.download_button(
                     label="🚀 Tải Bảng lương Excel chuẩn (.xlsx)",
