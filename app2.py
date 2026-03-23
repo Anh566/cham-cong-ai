@@ -92,8 +92,7 @@ else:
                             conn.close()
                         except Exception as e:
                             st.error(f"Lỗi: {e}")
-
-       with tab2:
+        with tab2:
             st.subheader("👥 Danh sách nhân sự và Liên kết khuôn mặt")
             conn = get_connection()
             
@@ -155,7 +154,6 @@ else:
                                 except Exception as e:
                                     st.error(f"Lỗi: {e}")
             conn.close()
-            
         with tab3:
             st.subheader("Lịch sử chấm công toàn công ty")
             conn = get_connection()
