@@ -163,24 +163,59 @@ else:
             conn.close()    
 
         with tab4:
-            st.subheader("Phê duyệt Bảng lương tháng")
-            cong_chuan = st.number_input("Công chuẩn tháng này", value=26)
+            st.subheader("💰 Phê duyệt Bảng lương tháng")
+            
+            # Công chuẩn để hệ thống biết 15tr là dành cho bao nhiêu ngày
+            cong_chuan = st.number_input("Số ngày công chuẩn trong tháng (để chia lương)", value=26)
+            
             conn = get_connection()
+            # Lấy SUM(earned_money) - đây là tổng tiền thực tế đã trừ muộn/nghỉ từ AI
             query = """
-                SELECT u.username, u.full_name, u.daily_rate as luong_cb, u.phu_cap,
-                       COUNT(a.id) as so_cong_thuc_te, SUM(a.earned_money) as luong_theo_cong
+                SELECT u.username, u.full_name, u.daily_rate as luong_thang, u.phu_cap,
+                       COUNT(a.id) as so_ngay_di_lam,
+                       SUM(a.earned_money) as tong_tien_cong_thuc_te
                 FROM users u
-                LEFT JOIN attendance a ON u.username = a.username
+                LEFT JOIN attendance a ON u.username = u.username
                 WHERE u.role = 'employee'
                 GROUP BY u.username, u.full_name, u.daily_rate, u.phu_cap
             """
             df_luong = pd.read_sql(query, conn)
-            df_luong['Lương Gross'] = (df_luong['luong_cb'] * (df_luong['so_cong_thuc_te'] / cong_chuan) + df_luong['phu_cap']).round()
-            df_luong['BHXH (10.5%)'] = (df_luong['Lương Gross'] * 0.105).round()
-            df_luong['Thu nhập tính thuế'] = df_luong['Lương Gross'] - df_luong['BHXH (10.5%)'] - 11000000
-            df_luong['Thuế TNCN'] = df_luong['Thu nhập tính thuế'].apply(tinh_thue_tncn)
-            df_luong['NET Thực Nhận'] = df_luong['Lương Gross'] - df_luong['BHXH (10.5%)'] - df_luong['Thuế TNCN']
-            st.dataframe(df_luong[['full_name', 'so_cong_thuc_te', 'NET Thực Nhận']].style.format({"NET Thực Nhận": "{:,.0f}"}), use_container_width=True)
+            
+            if not df_luong.empty:
+                # --- LOGIC TÍNH TOÁN ---
+                # Lương Gross = Tiền công thực tế (đã trừ muộn) + Phụ cấp
+                df_luong['Lương Gross'] = df_luong['tong_tien_cong_thuc_te'] + df_luong['phu_cap']
+                
+                # BHXH (10.5% tính trên Lương Gross)
+                df_luong['BHXH (10.5%)'] = (df_luong['Lương Gross'] * 0.105).round()
+                
+                # Thu nhập tính thuế (Lương Gross - BHXH - Giảm trừ gia cảnh 11tr)
+                df_luong['TNTT'] = df_luong['Lương Gross'] - df_luong['BHXH (10.5%)'] - 11000000
+                df_luong['TNTT'] = df_luong['TNTT'].apply(lambda x: x if x > 0 else 0)
+                
+                # Thuế TNCN (Dùng hàm lũy tiến ở đầu file)
+                df_luong['Thuế TNCN'] = df_luong['TNTT'].apply(tinh_thue_tncn)
+                
+                # NET Thực Nhận (Số tiền cuối cùng chuyển khoản)
+                df_luong['NET Thực Nhận'] = df_luong['Lương Gross'] - df_luong['BHXH (10.5%)'] - df_luong['Thuế TNCN']
+                
+                # Hiển thị bảng lương cho Admin
+                st.dataframe(
+                    df_luong[['full_name', 'so_ngay_di_lam', 'Lương Gross', 'BHXH (10.5%)', 'Thuế TNCN', 'NET Thực Nhận']]
+                    .rename(columns={'full_name': 'Họ tên', 'so_ngay_di_lam': 'Số ngày làm'})
+                    .style.format({
+                        "Lương Gross": "{:,.0f}đ",
+                        "BHXH (10.5%)": "{:,.0f}đ",
+                        "Thuế TNCN": "{:,.0f}đ",
+                        "NET Thực Nhận": "{:,.0f}đ"
+                    }),
+                    use_container_width=True
+                )
+                
+                # Thêm tóm tắt tổng quỹ lương
+                tong_quy = df_luong['NET Thực Nhận'].sum()
+                st.info(f"Tổng quỹ lương cần chi trả tháng này: **{tong_quy:,.0f} VNĐ**")
+            
             conn.close()
 
     # --- GIAO DIỆN NHÂN VIÊN ---
