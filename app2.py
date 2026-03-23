@@ -214,12 +214,39 @@ else:
                     st.markdown(f"**Mức lương cơ bản:** {user_info[2]:,.0f} VNĐ/Tháng")
                     st.markdown(f"**Phụ cấp cố định:** {user_info[3]:,.0f} VNĐ/Tháng")
 
+        # --- GIAO DIỆN NHÂN VIÊN ---
         with tab_cong:
             st.subheader(f"Bảng công của bạn tháng này")
             conn = get_connection()
-            query = "SELECT date, check_in, check_out, status, earned_money FROM attendance WHERE username=%s"
+            
+            # 1. SỬA QUERY: Thêm ORDER BY date DESC để ngày mới nhất hiện lên đầu bảng
+            query = "SELECT date, check_in, check_out, status, earned_money FROM attendance WHERE username=%s ORDER BY date DESC"
             df_personal = pd.read_sql(query, conn, params=(st.session_state.username,))
+            
             if not df_personal.empty:
-                st.table(df_personal.style.format({"earned_money": "{:,.0f}"}))
-                st.metric("Tổng thu nhập tạm tính", f"{df_personal['earned_money'].sum():,.0f} VNĐ")
+                # 2. XỬ LÝ LẶP CHỮ: Loại bỏ các trạng thái trùng lặp (ví dụ: Về sớm & Về sớm -> Về sớm)
+                df_personal['status'] = df_personal['status'].apply(
+                    lambda x: " & ".join(list(dict.fromkeys(x.split(" & ")))) if x else x
+                )
+
+                # 3. LÀM ĐẸP GIAO DIỆN: Đổi tên cột và xử lý giá trị None
+                df_personal = df_personal.rename(columns={
+                    'date': 'Ngày',
+                    'check_in': 'Giờ đến',
+                    'check_out': 'Giờ về',
+                    'status': 'Trạng thái',
+                    'earned_money': 'Lương ngày'
+                })
+                
+                # Thay thế các giá trị None (nếu nhân viên chưa check-out) thành dấu gạch ngang cho đẹp
+                df_personal['Giờ về'] = df_personal['Giờ về'].fillna('--:--:--')
+
+                # Hiển thị bảng
+                st.table(df_personal.style.format({"Lương ngày": "{:,.0f}"}))
+                
+                # Tính tổng thu nhập
+                total = df_personal['Lương ngày'].sum()
+                st.metric("Tổng thu nhập tạm tính", f"{total:,.0f} VNĐ")
+            else:
+                st.info("Chưa có dữ liệu chấm công cho tài khoản này.")
             conn.close()
