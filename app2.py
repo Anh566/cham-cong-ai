@@ -93,17 +93,21 @@ else:
                         except Exception as e:
                             st.error(f"Lỗi: {e}")
 
-        with tab2:
-            st.subheader("Danh sách nhân sự và Quản lý")
+       with tab2:
+            st.subheader("👥 Danh sách nhân sự và Liên kết khuôn mặt")
             conn = get_connection()
-            df_u = pd.read_sql("SELECT username, password, full_name, phong_ban, daily_rate, phu_cap FROM users WHERE role='employee'", conn)
+            
+            # 1. LẤY THÊM CỘT face_id TRONG CÂU LỆNH SELECT
+            query_u = "SELECT username, password, full_name, phong_ban, daily_rate, phu_cap, face_id FROM users WHERE role='employee' ORDER BY username ASC"
+            df_u = pd.read_sql(query_u, conn)
             
             for index, row in df_u.iterrows():
-                col1, col2, col3, col4, col5 = st.columns([2, 2, 3, 2, 2])
-                col1.write(f"**@{row['username']}**")
+                # Hiển thị dòng tóm tắt
+                col1, col2, col3, col4, col5 = st.columns([1.5, 1.5, 3, 2, 2])
+                col1.write(f"**{row['username']}**") # Mã nhân viên (NV001)
                 col2.code(row['password']) 
                 col3.write(f"{row['full_name']} ({row['phong_ban']})")
-                col4.write(f"{row['daily_rate']:,}đ")
+                col4.write(f"📁 AI ID: `{row['face_id']}`") # Hiện tên thư mục ảnh để Admin đối soát
                 
                 with col5:
                     btn_edit, btn_del = st.columns(2)
@@ -112,37 +116,41 @@ else:
                         cur.execute("DELETE FROM attendance WHERE username=%s", (row['username'],))
                         cur.execute("DELETE FROM users WHERE username=%s", (row['username'],))
                         conn.commit()
+                        st.cache_data.clear()
                         st.rerun()
 
                     edit_toggle = btn_edit.toggle("Sửa", key=f"tg_{row['username']}")
 
+                # FORM SỬA THÔNG TIN CHI TIẾT
                 if edit_toggle:
                     with st.container(border=True):
+                        st.markdown(f"⚙️ **Chỉnh sửa tài khoản:** `{row['username']}`")
                         with st.form(key=f"form_edit_{row['username']}"):
                             c1, c2, c3 = st.columns(3)
                             with c1:
-                                st.text_input("Mã nhân viên", value=row['username'], disabled=True)
                                 edit_pw = st.text_input("Mật khẩu mới", value=row['password'])
+                                # QUAN TRỌNG: Cho phép sửa face_id nếu Admin gõ nhầm tên thư mục ảnh
+                                edit_face = st.text_input("Liên kết thư mục ảnh (AI ID)", value=row['face_id'])
                             with c2:
                                 edit_name = st.text_input("Họ tên", value=row['full_name'])
                                 danh_sach_phong = ["IT - Kỹ thuật", "Hành chính - Nhân sự", "Kế toán", "Marketing", "Vận hành", "Khác"]
                                 idx_phong = danh_sach_phong.index(row['phong_ban']) if row['phong_ban'] in danh_sach_phong else 5
-                                edit_phong = st.selectbox("Phòng ban", danh_sach_phong, index=idx_phong, key=f"phong_{row['username']}")
+                                edit_phong = st.selectbox("Phòng ban", danh_sach_phong, index=idx_phong)
                             with c3:
-                                edit_rate = st.number_input("Lương cơ bản", value=int(row['daily_rate']), step=500000)
+                                edit_rate = st.number_input("Lương tháng", value=int(row['daily_rate']), step=500000)
                                 edit_phucap = st.number_input("Phụ cấp", value=int(row['phu_cap']), step=100000)
                             
-                            if st.form_submit_button("💾 Lưu thay đổi"):
+                            if st.form_submit_button("💾 Xác nhận thay đổi"):
                                 try:
                                     cur = conn.cursor()
                                     cur.execute("""
                                         UPDATE users 
-                                        SET password=%s, full_name=%s, phong_ban=%s, daily_rate=%s, phu_cap=%s 
+                                        SET password=%s, full_name=%s, phong_ban=%s, daily_rate=%s, phu_cap=%s, face_id=%s 
                                         WHERE username=%s
-                                    """, (edit_pw, edit_name, edit_phong, edit_rate, edit_phucap, row['username']))
+                                    """, (edit_pw, edit_name, edit_phong, edit_rate, edit_phucap, edit_face, row['username']))
                                     conn.commit()
-                                    st.cache_data.clear() # XÓA CACHE ĐỂ ĐỒNG BỘ DỮ LIỆU
-                                    st.success("Cập nhật thành công!")
+                                    st.cache_data.clear()
+                                    st.success("✅ Đã cập nhật thông tin nhân sự!")
                                     st.rerun()
                                 except Exception as e:
                                     st.error(f"Lỗi: {e}")
