@@ -159,7 +159,7 @@ else:
                                             WHERE username=%s
                                         """, (new_user_val, edit_pw, edit_name, edit_phong, edit_rate, edit_pc, edit_face, row['username']))
                                         
-                                        conn.rowcount # Kiểm tra số dòng bị ảnh hưởng
+                                        rows_affected = cur.rowcount 
                                         conn.commit()
                                         st.cache_data.clear()
                                         st.success(f"✅ Đã cập nhật thành công cho {new_user_val}!")
