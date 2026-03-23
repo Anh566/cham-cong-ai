@@ -183,106 +183,66 @@ else:
             conn.close()    
 
         with tab4:
-    st.subheader("💰 Phê duyệt Bảng lương tháng")
-    
-    # 1. Cấu hình ngày công chuẩn
-    col_cfg1, col_cfg2 = st.columns(2)
-    with col_cfg1:
-        cong_chuan = st.number_input("Số ngày công chuẩn (ví dụ 26)", value=26)
-    with col_cfg2:
-        # Thêm nút bấm để cập nhật dữ liệu mới nhất
-        st.write("") # Tạo khoảng trống
-        if st.button("🔄 Làm mới dữ liệu"):
-            st.rerun()
-
-    conn = get_connection()
-    # --- SQL ĐÃ SỬA LỖI ---
-    # 1. Sửa u.username = a.username (Nối bảng chính xác)
-    # 2. Dùng COUNT(DISTINCT a.date) để đếm đúng số ngày đi làm thực tế
-    query = """
-        SELECT 
-            u.username, 
-            u.full_name, 
-            u.daily_rate as luong_thang, 
-            u.phu_cap,
-            COUNT(DISTINCT a.date) as so_ngay_di_lam, 
-            SUM(a.earned_money) as tong_tien_cong_thuc_te
-        FROM users u
-        LEFT JOIN attendance a ON u.username = a.username
-        WHERE u.role = 'employee'
-        GROUP BY u.username, u.full_name, u.daily_rate, u.phu_cap
-    """
-    df_luong = pd.read_sql(query, conn)
-    
-    if not df_luong.empty:
-        # --- LOGIC TÍNH TOÁN ---
-        # Lương Gross = Tổng tiền AI tính (đã trừ muộn) + Phụ cấp
-        df_luong['Lương Gross'] = df_luong['tong_tien_cong_thuc_te'] + df_luong['phu_cap']
-        
-        # BHXH (10.5% tính trên Lương Gross)
-        df_luong['BHXH (10.5%)'] = (df_luong['Lương Gross'] * 0.105).round()
-        
-        # Thu nhập tính thuế (Lương Gross - BHXH - Giảm trừ gia cảnh 11tr)
-        df_luong['TNTT'] = df_luong['Lương Gross'] - df_luong['BHXH (10.5%)'] - 11000000
-        df_luong['TNTT'] = df_luong['TNTT'].apply(lambda x: x if x > 0 else 0)
-        
-        # Thuế TNCN (Dùng hàm lũy tiến của bạn)
-        df_luong['Thuế TNCN'] = df_luong['TNTT'].apply(tinh_thue_tncn)
-        
-        # NET Thực Nhận
-        df_luong['NET Thực Nhận'] = df_luong['Lương Gross'] - df_luong['BHXH (10.5%)'] - df_luong['Thuế TNCN']
-        
-        # --- HIỂN THỊ BẢNG LƯƠNG ---
-        st.dataframe(
-            df_luong[['full_name', 'so_ngay_di_lam', 'Lương Gross', 'BHXH (10.5%)', 'Thuế TNCN', 'NET Thực Nhận']]
-            .rename(columns={'full_name': 'Họ tên', 'so_ngay_di_lam': 'Số ngày làm'})
-            .style.format({
-                "Lương Gross": "{:,.0f}đ",
-                "BHXH (10.5%)": "{:,.0f}đ",
-                "Thuế TNCN": "{:,.0f}đ",
-                "NET Thực Nhận": "{:,.0f}đ"
-            }),
-            use_container_width=True
-        )
-        
-        # Tóm tắt quỹ lương
-        tong_quy = df_luong['NET Thực Nhận'].sum()
-        st.success(f"✅ Tổng quỹ lương cần chi trả: **{tong_quy:,.0f} VNĐ**")
-
-        # --- TÍNH NĂNG XUẤT EXCEL CHO SẾP ---
-        st.divider()
-        st.subheader("📥 Xuất báo cáo Excel")
-        
-        import io
-        # Chuẩn bị dữ liệu thuần để sếp tự cộng trừ trong Excel được
-        df_excel = df_luong[['full_name', 'so_ngay_di_lam', 'Lương Gross', 'BHXH (10.5%)', 'Thuế TNCN', 'NET Thực Nhận']].copy()
-        df_excel.columns = ['Họ tên', 'Số ngày làm', 'Lương Gross (VND)', 'BHXH 10.5% (VND)', 'Thuế TNCN (VND)', 'Thực nhận NET (VND)']
-
-        buffer = io.BytesIO()
-        # Cần cài pip install xlsxwriter
-        with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-            df_excel.to_excel(writer, index=False, sheet_name='Bang_Luong_Thang')
+            # Tất cả code ở đây phải thụt lề vào 1 mức so với "with tab4"
+            st.subheader("💰 Phê duyệt Bảng lương tháng")
             
-            # Format một chút cho đẹp
-            workbook  = writer.book
-            worksheet = writer.sheets['Bang_Luong_Thang']
-            header_format = workbook.add_format({'bold': True, 'bg_color': '#D7E4BC', 'border': 1})
+            col_cfg1, col_cfg2 = st.columns(2)
+            with col_cfg1:
+                cong_chuan = st.number_input("Số ngày công chuẩn (ví dụ 26)", value=26)
+            with col_cfg2:
+                st.write("") 
+                if st.button("🔄 Làm mới dữ liệu"):
+                    st.rerun()
+
+            conn = get_connection()
+            query = """
+                SELECT 
+                    u.username, u.full_name, u.daily_rate as luong_thang, u.phu_cap,
+                    COUNT(DISTINCT a.date) as so_ngay_di_lam, 
+                    SUM(a.earned_money) as tong_tien_cong_thuc_te
+                FROM users u
+                LEFT JOIN attendance a ON u.username = a.username
+                WHERE u.role = 'employee'
+                GROUP BY u.username, u.full_name, u.daily_rate, u.phu_cap
+            """
+            df_luong = pd.read_sql(query, conn)
             
-            for col_num, value in enumerate(df_excel.columns.values):
-                worksheet.write(0, col_num, value, header_format)
-                worksheet.set_column(col_num, col_num, 18) # Chỉnh độ rộng cột
+            if not df_luong.empty:
+                df_luong['Lương Gross'] = df_luong['tong_tien_cong_thuc_te'] + df_luong['phu_cap']
+                df_luong['BHXH (10.5%)'] = (df_luong['Lương Gross'] * 0.105).round()
+                df_luong['TNTT'] = (df_luong['Lương Gross'] - df_luong['BHXH (10.5%)'] - 11000000).clip(lower=0)
+                df_luong['Thuế TNCN'] = df_luong['TNTT'].apply(tinh_thue_tncn)
+                df_luong['NET Thực Nhận'] = df_luong['Lương Gross'] - df_luong['BHXH (10.5%)'] - df_luong['Thuế TNCN']
+                
+                st.dataframe(
+                    df_luong[['full_name', 'so_ngay_di_lam', 'Lương Gross', 'BHXH (10.5%)', 'Thuế TNCN', 'NET Thực Nhận']]
+                    .rename(columns={'full_name': 'Họ tên', 'so_ngay_di_lam': 'Số ngày làm'})
+                    .style.format({"Lương Gross": "{:,.0f}đ", "BHXH (10.5%)": "{:,.0f}đ", "Thuế TNCN": "{:,.0f}đ", "NET Thực Nhận": "{:,.0f}đ"}),
+                    use_container_width=True
+                )
+                
+                tong_quy = df_luong['NET Thực Nhận'].sum()
+                st.success(f"✅ Tổng quỹ lương cần chi trả: **{tong_quy:,.0f} VNĐ**")
 
-        st.download_button(
-            label="🚀 Tải Bảng lương Excel (.xlsx)",
-            data=buffer.getvalue(),
-            file_name=f"Bang_Luong_{datetime.now().strftime('%m_%Y')}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-    else:
-        st.warning("Chưa có dữ liệu chấm công để tính lương.")
-    
-    conn.close()
+                st.divider()
+                st.subheader("📥 Xuất báo cáo Excel")
+                import io
+                df_excel = df_luong[['full_name', 'so_ngay_di_lam', 'Lương Gross', 'BHXH (10.5%)', 'Thuế TNCN', 'NET Thực Nhận']].copy()
+                df_excel.columns = ['Họ tên', 'Số ngày làm', 'Lương Gross (VND)', 'BHXH 10.5% (VND)', 'Thuế TNCN (VND)', 'Thực nhận NET (VND)']
 
+                buffer = io.BytesIO()
+                with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+                    df_excel.to_excel(writer, index=False, sheet_name='Bang_Luong')
+                
+                st.download_button(
+                    label="🚀 Tải Bảng lương Excel (.xlsx)",
+                    data=buffer.getvalue(),
+                    file_name=f"Bang_Luong_{datetime.now().strftime('%m_%Y')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+            else:
+                st.warning("Chưa có dữ liệu chấm công.")
+            conn.close()
    # --- GIAO DIỆN NHÂN VIÊN ---
     elif st.session_state.role == 'employee':
         tab_info, tab_cong = st.tabs(["👤 Thông tin cá nhân", "📅 Bảng chấm công"])
