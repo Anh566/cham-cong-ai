@@ -226,7 +226,7 @@ else:
 
                 # --- PHẦN XUẤT FILE EXCEL ĐÃ SỬA LỖI TÊN BIẾN ---
                 st.divider()
-                st.subheader("📥 Xuất báo cáo Excel cho Sếp")
+                st.subheader("📥 Xuất báo cáo Excel")
                 
                 import io
                 from datetime import datetime
