@@ -5,3 +5,4 @@ xlsxwriter
 insightface
 onnxruntime
 opencv-python
+scikit-learn
