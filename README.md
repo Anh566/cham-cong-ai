@@ -1,7 +1,7 @@
 # HỆ THỐNG CHẤM CÔNG NHẬN DIỆN KHUÔN MẶT AI THỜI GIAN THỰC
 
 > **Sinh viên thực hiện:** Đồng Vũ Ngọc Anh  
-> **Trường:** Đại học Bách Khoa Hà Nội (HUST)
+> **Trường:** Đại học Bách Khoa Hà Nội 
 
 ## 1. Giới thiệu (Introduction)
 Hệ thống chấm công tự động sử dụng thiết bị thu thập hình ảnh **ESP32-CAM** và trạm xử lý trung tâm **MacBook Air M2**. Dự án ứng dụng các thuật toán **SOTA (State-of-the-Art)** trong lĩnh vực Thị giác máy tính để nhận diện danh tính và ngăn chặn các hành vi giả mạo bằng hình ảnh 2D.
