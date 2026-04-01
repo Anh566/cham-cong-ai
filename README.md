@@ -27,4 +27,4 @@ Hệ thống hoạt động theo mô hình Client-Server:
 4. Chạy ứng dụng: `python app.py`
 
 ---
-*Dự án phục vụ mục đích nghiên cứu và học tập môn học.*
+
