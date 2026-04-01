@@ -23,8 +23,10 @@ Hệ thống hoạt động theo mô hình Client-Server:
 ## 4. Hướng dẫn cài đặt (Setup)
 1. Cài đặt thư viện: `pip install insightface onnxruntime-silicon opencv-python numpy`
 2. Nạp code Arduino trong thư mục `CameraWebServer` cho ESP32-CAM.
-3. Cập nhật IP của ESP32 vào file `app.py`.
-4. Chạy ứng dụng: `python app.py`
+3. Cập nhật IP của ESP32 vào file `recognition_webcam3_esp32.py`.
+4. Chạy ứng dụng: file `recognition_webcam3_esp32.py` và nhận diện khuôn mặt 
+5. Truy cập web chấm công bằng đường link: https://cham-cong-anh566.streamlit.app/
+
 
 ---
 
