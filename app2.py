@@ -15,9 +15,20 @@ st.set_page_config(page_title="Hệ thống Tính Lương Chuẩn", layout="wide
 # --- ẨN BIỂU TƯỢNG GITHUB VÀ MENU THỪA ---
 hide_github_style = """
     <style>
+    /* Ẩn nút GitHub/Fork ở góc trên bên phải */
     .stAppToolbar {display: none;}
+    
+    /* Ẩn biểu tượng mỏ neo (Anchor) cạnh các tiêu đề */
+    .element-container:has(header) a {display: none;}
+    header a {display: none !important;}
+    
+    /* Ẩn menu 3 chấm */
     #MainMenu {visibility: hidden;}
+    
+    /* Ẩn dòng "Made with Streamlit" */
     footer {visibility: hidden;}
+    
+    /* Ẩn header mặc định của Streamlit */
     header {visibility: hidden;}
     </style>
 """
