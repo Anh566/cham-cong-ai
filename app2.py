@@ -11,24 +11,43 @@ def get_connection():
 
 st.set_page_config(page_title="Hệ thống Tính Lương Chuẩn", layout="wide")
 
-# --- ẨN BIỂU TƯỢNG GITHUB, MỎ NEO VÀ MENU THỪA ---
-hide_style = """
+# --- TRIỆT TIÊU TOÀN BỘ MỎ NEO VÀ LINK HỆ THỐNG ---
+hide_all_anchors = """
     <style>
-    /* Ẩn Toolbar (GitHub, Fork) và Header */
-    .stAppToolbar, header {display: none !important;}
+    /* Ẩn Toolbar, Header và Menu chính */
+    .stAppToolbar, header, #MainMenu {display: none !important;}
     
-    /* Ẩn Menu 3 chấm và Footer */
-    #MainMenu, footer {visibility: hidden !important;}
+    /* Ẩn Footer dòng chữ 'Made with Streamlit' */
+    footer {display: none !important;}
 
-    /* CHỐT HẠ: Ẩn tất cả các mỏ neo (Anchor) cạnh tiêu đề */
-    a.viewerBadge_link__1S13m, .st-emotion-cache-15zrgzn e1nzilvr4 {display: none !important;}
-    a[href^="#"] {display: none !important;}
+    /* ẨN MỎ NEO CẠNH TIÊU ĐỀ: Đây là phần quan quan trọng nhất */
+    /* Nó sẽ ẩn tất cả các link có biểu tượng mỏ neo khi hover */
+    a.st-emotion-cache-15zrgzn, .st-emotion-cache-15zrgzn {
+        display: none !important;
+    }
     
-    /* Chỉnh lề để bù đắp khoảng trống khi ẩn header */
-    .block-container {padding-top: 1rem !important;}
+    /* Ẩn tất cả các liên kết ẩn (anchor links) trong các thẻ tiêu đề */
+    h1 a, h2 a, h3 a, h4 a, h5 a, h6 a {
+        display: none !important;
+    }
+    
+    /* Ẩn mỏ neo xuất hiện khi di chuột qua các thành phần */
+    .stMarkdown a {
+        text-decoration: none;
+    }
+    
+    /* Ngăn chặn việc bấm vào các tiêu đề để hiện link */
+    h1, h2, h3, h4, h5, h6 {
+        pointer-events: none;
+    }
+
+    /* Bù lại khoảng trống phía trên do ẩn header */
+    .block-container {
+        padding-top: 2rem !important;
+    }
     </style>
 """
-st.markdown(hide_style, unsafe_allow_html=True)
+st.markdown(hide_all_anchors, unsafe_allow_html=True)
 
 # --- HÀM TRỢ GIÚP TÍNH TOÁN ---
 def tinh_thue_tncn(thu_nhap_tinh_thue):
