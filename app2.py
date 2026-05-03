@@ -12,27 +12,24 @@ def get_connection():
 
 st.set_page_config(page_title="Hệ thống Tính Lương Chuẩn", layout="wide")
 
-# --- ẨN BIỂU TƯỢNG GITHUB VÀ MENU THỪA ---
-hide_github_style = """
+# --- ẨN BIỂU TƯỢNG GITHUB, MỎ NEO VÀ MENU THỪA ---
+hide_style = """
     <style>
-    /* Ẩn nút GitHub/Fork ở góc trên bên phải */
-    .stAppToolbar {display: none;}
+    /* Ẩn Toolbar (GitHub, Fork) và Header */
+    .stAppToolbar, header {display: none !important;}
     
-    /* Ẩn biểu tượng mỏ neo (Anchor) cạnh các tiêu đề */
-    .element-container:has(header) a {display: none;}
-    header a {display: none !important;}
+    /* Ẩn Menu 3 chấm và Footer */
+    #MainMenu, footer {visibility: hidden !important;}
+
+    /* CHỐT HẠ: Ẩn tất cả các mỏ neo (Anchor) cạnh tiêu đề */
+    a.viewerBadge_link__1S13m, .st-emotion-cache-15zrgzn e1nzilvr4 {display: none !important;}
+    a[href^="#"] {display: none !important;}
     
-    /* Ẩn menu 3 chấm */
-    #MainMenu {visibility: hidden;}
-    
-    /* Ẩn dòng "Made with Streamlit" */
-    footer {visibility: hidden;}
-    
-    /* Ẩn header mặc định của Streamlit */
-    header {visibility: hidden;}
+    /* Chỉnh lề để bù đắp khoảng trống khi ẩn header */
+    .block-container {padding-top: 1rem !important;}
     </style>
 """
-st.markdown(hide_github_style, unsafe_allow_html=True)
+st.markdown(hide_style, unsafe_allow_html=True)
 
 # --- HÀM TRỢ GIÚP TÍNH TOÁN ---
 def tinh_thue_tncn(thu_nhap_tinh_thue):
