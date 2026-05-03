@@ -47,7 +47,7 @@ hide_all_anchors = """
     }
     </style>
 """
-# st.markdown(hide_all_anchors, unsafe_allow_html=True)
+st.markdown(hide_all_anchors, unsafe_allow_html=True)
 
 # --- HÀM TRỢ GIÚP TÍNH TOÁN ---
 def tinh_thue_tncn(thu_nhap_tinh_thue):
