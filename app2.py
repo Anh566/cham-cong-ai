@@ -5,7 +5,7 @@ from datetime import datetime
 import os
 
 # --- CẤU HÌNH KẾT NỐI ---
-DATABASE_URL = "postgresql://postgres.jqznbqibwbjhqnlhnmwu:Tutran08070@aws-1-ap-northeast-1.pooler.supabase.com:6543/postgres?sslmode=require"
+DATABASE_URL = st.secrets["DATABASE_URL"]
 def get_connection():
     return psycopg2.connect(DATABASE_URL)
 
