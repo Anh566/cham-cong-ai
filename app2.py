@@ -64,7 +64,7 @@ if 'logged_in' not in st.session_state:
 
 if not st.session_state.logged_in:
     # GIAO DIỆN ĐĂNG NHẬP
-    st.title("🔐 Đăng nhập hệ thống")
+    st.markdown("<h1 style='text-align: center;'>🔐 Đăng nhập hệ thống</h1>", unsafe_allow_html=True)
     with st.form("login_form"):
         user = st.text_input("Username")
         pw = st.text_input("Password", type="password")
