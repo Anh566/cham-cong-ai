@@ -5,7 +5,6 @@ from datetime import datetime
 import os
 
 # --- CẤU HÌNH KẾT NỐI ---
-# --- CẤU HÌNH KẾT NỐI ---
 DATABASE_URL = st.secrets["DATABASE_URL"]
 def get_connection():
     return psycopg2.connect(DATABASE_URL)
