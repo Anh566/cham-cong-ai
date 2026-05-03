@@ -2,7 +2,3 @@ streamlit
 psycopg2-binary
 pandas
 xlsxwriter
-insightface
-onnxruntime
-opencv-python
-scikit-learn
