@@ -12,6 +12,17 @@ def get_connection():
 
 st.set_page_config(page_title="Hệ thống Tính Lương Chuẩn", layout="wide")
 
+# --- ẨN BIỂU TƯỢNG GITHUB VÀ MENU THỪA ---
+hide_github_style = """
+    <style>
+    .stAppToolbar {display: none;}
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    </style>
+"""
+st.markdown(hide_github_style, unsafe_allow_html=True)
+
 # --- HÀM TRỢ GIÚP TÍNH TOÁN ---
 def tinh_thue_tncn(thu_nhap_tinh_thue):
     """Tính thuế TNCN theo biểu thuế lũy tiến từng phần"""
