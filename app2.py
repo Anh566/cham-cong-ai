@@ -12,6 +12,7 @@ def get_connection():
 st.set_page_config(page_title="Hệ thống Tính Lương Chuẩn", layout="wide")
 
 # --- TRIỆT TIÊU TOÀN BỘ MỎ NEO VÀ LINK HỆ THỐNG ---
+'''
 hide_all_anchors = """
     <style>
     /* Ẩn Toolbar, Header và Menu chính */
@@ -48,6 +49,7 @@ hide_all_anchors = """
     </style>
 """
 # st.markdown(hide_all_anchors, unsafe_allow_html=True)
+'''
 
 # --- HÀM TRỢ GIÚP TÍNH TOÁN ---
 def tinh_thue_tncn(thu_nhap_tinh_thue):
